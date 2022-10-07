@@ -73,6 +73,160 @@ class JamfProClient:
             print('Retrieval failed!')
             return {'Error': response.json()}
 
+    def get_categories(self, page_size: int = 100, sort: str = None, filter: str = None) -> List:
+        """
+        Return a list of category objects.
+        """
+        page = 0
+        params = {'page-size': page_size}
+        
+        params['sort'] = ','.join(sort) if sort else ''
+        params['filter'] = filter if filter else ''
+        
+        response = self.session.get(f'{self.base_url}/v1/categories', params=params)
+        
+        if response.status_code == 200:
+            results = response.json()['results']
+            print(len(results))
+            total = response.json()['totalCount']
+            total_pages = (total//page_size)
+
+            while page != total_pages:
+                page += 1
+                params['page'] = page
+                response = self.session.get(f'{self.base_url}/v1/categories',
+                                            params=params)
+
+                if response.status_code == 200:
+                    results += response.json()['results']
+                    print(len(results))
+
+                else:
+                    print('Failed iteration')
+                    return [{'Error': f'Failed iteration - {response.status_code}'}]
+
+            return results
+
+        else:
+            print('Failed to retrieve records')
+            return [{'Error': f'Failed to retrieve records - {response.status_code}'}]
+
+    def create_category(self, name: str, priority: int) -> dict:
+        """
+        Create a category record.
+        """
+        payload = {
+            "name": name,
+            "priority": priority
+        }
+        
+        response = self.session.post(f'{self.base_Url}/v1/categories', json=payload)
+        
+        if response.status_code == 201:
+            return response.json()
+        else:
+            print('Error creating record!')
+            return {'Error': f'Failed to create record: {response.status_code}'}
+
+    def delete_categories(self, ids: List) -> bool:
+        """
+        Delete multiple Categories by their IDs.
+        """
+        
+        response = self.session.post(f'{self.base_url}/v1/categories/delete-multiple',
+                                     json={"ids": ids})
+        
+        return response.status_code == 204
+
+    def get_category(self, id: str) -> dict:
+        """
+        Gets specified Category object.
+        """
+        response = self.session.get(f'{self.base_url}/v1/categories/{id}')
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print('Error retrieving category!')
+            return {'Error': f'Failed to retrieve category - {response.status_code}'}
+
+    def update_category(self, id: str, name: str, priority: int) -> bool:
+        """
+        Update specified category object.
+        """
+        payload = {
+            "name": name,
+            "priority": priority
+        }
+        
+        response = self.session.put(f'{self.base_url}/v1/categories/{id}', json=payload)
+        
+        return response.status_code == 200
+    
+    def remove_category(self, id: str) -> bool:
+        """
+        Removes specified category record.
+        """
+        
+        response = self.session.delete(f'{self.base_url}/v1/categories/{id}')
+        
+        return response.status_code == 204
+    
+    def get_category_history(self, id: str, page_size: int = 100,
+                             sort: List = None, filter: str = None) -> List:
+        """
+        Gets specified Category history object.
+        """
+        
+        page = 0
+        params = {"page-size": page_size}
+        params["sort"] = ','.join(sort) if sort else ''
+        params["filter"] = filter if filter else ''
+        
+        response = self.session.get(f'{self.base_url}/v1/categories/{id}/history', params=params)
+        
+        if response.status_code == 200:
+            results = response.json()['results']
+            print(len(results))
+            total = response.json()['totalCount']
+            total_pages = (total//page_size)
+
+            while page != total_pages:
+                page += 1
+                params['page'] = page
+                response = self.session.get(f'{self.base_url}/v1/categories',
+                                            params=params)
+
+                if response.status_code == 200:
+                    results += response.json()['results']
+                    print(len(results))
+
+                else:
+                    print('Failed iteration')
+                    return [{'Error': f'Failed iteration - {response.status_code}'}]
+
+            return results
+
+        else:
+            print('Failed to retrieve records')
+            return [{'Error': f'Failed to retrieve records - {response.status_code}'}]
+
+    def add_category_note(self, id: str, note: str) -> bool:
+        """
+        Adds specified Category history object notes.
+        """
+        
+        response = self.session.post(f'{self.base_url}/v1/categories/{id}/history')
+        
+        if response.status_code == 201:
+            return True
+        elif response.status_code == 404:
+            print('Category does not exist.')
+            return False
+        elif response.status_code == 503:
+            print('Category history cannot be saved.')
+            return False
+
     def get_computer_groups(self) -> List:
         """
         Return a list of all computer groups.
@@ -84,7 +238,7 @@ class JamfProClient:
             return response.json()
         else:
             print('Computer group retrieval failed!')
-            return {'Error': 'Computer group retrieval failed!'}
+            return {'Error': f'Computer group retrieval failed - {response.status_code}'}
 
     def get_computer_inventory(self, sections: List = None, page_size: int = 100,
                                sort: List = None, filter: str = None) -> List:
@@ -231,6 +385,7 @@ class JamfProClient:
         else:
             print('Error sending updates!')
             return {'Error': f'Error sending updates - {response.status_code}'}
+
 
 
 class JamfProtectClient:
